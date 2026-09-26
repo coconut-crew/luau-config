@@ -10,6 +10,12 @@ export type Settings = {
 	error: ((any, number) -> ())?,
 }
 
+type ErrConfigYielded = {
+	ok: false,
+	status: "yielded",
+	thread: thread,
+}
+
 type ErrCtxConstructorFail = {
 	ok: false,
 	status: "ctx_constructor_err",
@@ -35,7 +41,13 @@ type Success<T> = {
 	ctx: T,
 }
 
-export type ConfigResult<T> = Success<T> | ErrFileAccessFail | ErrCompilationFail | ErrConfigFileFail | ErrCtxConstructorFail
+export type ConfigResult<T> =
+	| Success<T>
+	| ErrConfigYielded
+	| ErrFileAccessFail
+	| ErrCompilationFail
+	| ErrConfigFileFail
+	| ErrCtxConstructorFail
 
 const luau_conf = {}
 luau_conf.__index = luau_conf
@@ -61,7 +73,7 @@ function luau_conf.add_library<T>(self: Identity<T>, name: string, lib: Library<
 
 		for lib_key, lib_value in lib do
 			derived_lib[lib_key] = function(...)
-				lib_value(ctx, ...)
+				return lib_value(ctx, ...)
 			end
 		end
 
@@ -135,6 +147,14 @@ function luau_conf.run<T>(self: Identity<T>, conf_path: path.Pathlike): ConfigRe
 
 	const status = coroutine.resume(thread)
 	if status then
+		if coroutine.status(thread) == "suspended" then
+			return {
+				ok = false,
+				status = "yielded",
+				thread = thread,
+			}
+		end
+
 		return {
 			ok = true,
 			ctx = ctx,

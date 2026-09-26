@@ -48,4 +48,18 @@ test.suite("error_handling", function(suite)
 		assert(res.status == "file_access_err")
 		asserts.strContains(res.msg, "does_not_exist.luau")
 	end)
+
+	suite:case("an error while building the ctx returns a ctx constructor error", function(asserts)
+		const conf = src.new(function(): {}
+			error("ctx failed")
+		end, {})
+
+		const res = conf:run("tests/samples/empty.luau")
+
+		assert(not res.ok)
+		asserts.eq(res.status, "ctx_constructor_err")
+		assert(res.status == "ctx_constructor_err")
+		const _, err = coroutine.close(res.thread)
+		asserts.strContains(tostring(err), "ctx failed")
+	end)
 end)
