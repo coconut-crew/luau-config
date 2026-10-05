@@ -1,3 +1,4 @@
+const library = require("@src/library")
 const fs = require("@std/fs")
 const luau = require("@std/luau")
 const path = require("@std/path")
@@ -53,33 +54,22 @@ const luau_conf = {}
 luau_conf.__index = luau_conf
 export type Identity<T> = setmetatable<{
 	ctx_constructor: (path.Path) -> T,
-	lib_constructors: { [string]: (ctx: T) -> Library<T> },
+	libs: { [string]: library.Identity<T> },
 	settings: Settings,
 }, typeof(luau_conf)>
 
 const function constructor<T>(ctx_constructor: (path.Path) -> T, settings: Settings): Identity<T>
 	const self = setmetatable({
 		ctx_constructor = ctx_constructor,
-		lib_constructors = {},
+		libs = {},
 		settings = settings,
 	}, luau_conf)
 
 	return self
 end
 
-function luau_conf.add_library<T>(self: Identity<T>, name: string, lib: Library<T>)
-	self.lib_constructors[name] = function(ctx: any)
-		const derived_lib = {}
-
-		for lib_key, lib_value in lib do
-			derived_lib[lib_key] = function(...)
-				return lib_value(ctx, ...)
-			end
-		end
-
-		table.freeze(derived_lib)
-		return derived_lib :: any
-	end
+function luau_conf.add_library<T>(self: Identity<T>, lib: library.Identity<T>)
+	self.libs[lib.identifier] = lib
 end
 
 function luau_conf.run<T>(self: Identity<T>, conf_path: path.Pathlike): ConfigResult<T>
@@ -95,8 +85,8 @@ function luau_conf.run<T>(self: Identity<T>, conf_path: path.Pathlike): ConfigRe
 
 	const lib_table = {}
 
-	for lib_name, lib_constructor in self.lib_constructors do
-		lib_table[lib_name] = lib_constructor(ctx)
+	for lib_name, library in self.libs do
+		lib_table[lib_name] = library:instantiate(ctx)
 	end
 
 	const env: { [string]: any } = {
@@ -169,4 +159,4 @@ function luau_conf.run<T>(self: Identity<T>, conf_path: path.Pathlike): ConfigRe
 end
 
 table.freeze(luau_conf)
-return { new = constructor }
+return { new = constructor, library = library.new }

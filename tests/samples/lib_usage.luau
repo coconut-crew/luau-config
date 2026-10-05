@@ -1,6 +1,3 @@
-const api = require("@api")
+const api = require("@counter")
 
-api.increment()
-api.increment()
-
-api.decrement()
+api.increment(1)
