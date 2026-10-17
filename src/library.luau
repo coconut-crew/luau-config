@@ -35,7 +35,7 @@ function library.add_function<T>(self: Identity<T>, name: string, type_signature
 	}
 end
 
-function library.write_interface<T>(self: Identity<T>, location: path.Path)
+function library.write_interface<T>(self: Identity<T>, location: path.Pathlike)
 	const file = {}
 
 	for type_name, type_sig in self.types do
